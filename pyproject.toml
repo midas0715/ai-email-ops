@@ -1,0 +1,39 @@
+[project]
+name = "ai-email-ops"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "midas0715", email = "prathamsarin0@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "bcrypt==4.0.1",
+    "fastapi>=0.162.0",
+    "llama-index>=0.14.25",
+    "llama-index-embeddings-ollama>=0.10.0",
+    "llama-index-llms-ollama>=0.11.0",
+    "llama-index-vector-stores-postgres>=0.9.0",
+    "passlib>=1.7.4",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-settings>=2.16.1",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.32",
+    "redis>=8.1.0",
+    "sqlalchemy>=2.0.55",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+ai-email-ops = "ai_email_ops:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
