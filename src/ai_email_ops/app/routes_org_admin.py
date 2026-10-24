@@ -17,6 +17,7 @@ from ai_email_ops.app.models import (
     TicketStatus,
 )
 from ai_email_ops.app.security import hash_password
+from ai_email_ops.app.security import generate_api_key, hash_api_key, hash_password
 
 router = APIRouter(prefix="/orgs/me", tags=["organization admin"])
 
@@ -53,6 +54,10 @@ class DepartmentOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class ApiKeyOut(BaseModel):
+    api_key: str
+    hint: str
+    note: str = "Copy this key now. It is shown only once."
 
 def get_agent_or_404(db: Session, org: Organization, agent_id: int) -> SupportAgent:
     agent = db.get(SupportAgent, agent_id)
@@ -187,4 +192,29 @@ def delete_department(
             status_code=409, detail="This department is used by existing escalations and cannot be deleted"
         )
     db.delete(department)
+    db.commit()
+
+# ---------- API key for incoming emails ----------
+
+
+@router.post("/api-key", response_model=ApiKeyOut, status_code=201)
+def create_api_key(
+    db: Session = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    """Create a key, or replace the old one. The old key stops working immediately."""
+    key = generate_api_key()
+    org.api_key_hash = hash_api_key(key)  # only the hash is stored
+    org.api_key_hint = key[-4:]
+    db.commit()
+    return ApiKeyOut(api_key=key, hint=org.api_key_hint)
+
+
+@router.delete("/api-key", status_code=204)
+def revoke_api_key(
+    db: Session = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    org.api_key_hash = None
+    org.api_key_hint = None
     db.commit()

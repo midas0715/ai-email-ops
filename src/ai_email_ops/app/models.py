@@ -27,6 +27,9 @@ class Organization(Base):
     email: Mapped[str | None] = mapped_column(String(320), unique=True, nullable=True)
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    api_key_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    api_key_hint: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    
 class SupportAgent(Base):
     __tablename__ = "support_agent"
 

@@ -21,6 +21,7 @@ class OrgOut(BaseModel):
     id: int
     name: str
     email: str | None
+    api_key_hint: str | None = None
 
     model_config = {"from_attributes": True}
 
