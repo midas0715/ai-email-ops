@@ -115,3 +115,14 @@ class Escalation(Base):
 
     ticket: Mapped["Ticket"] = relationship(back_populates="escalation")
     department: Mapped["Department"] = relationship()
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_document"
+    __table_args__ = (UniqueConstraint("organization_id", "filename"),)  # one name per organization
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"))
+    filename: Mapped[str] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column()
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
