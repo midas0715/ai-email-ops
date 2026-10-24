@@ -5,6 +5,9 @@ from passlib.context import CryptContext
 
 from ai_email_ops.app.config import settings
 
+import hashlib
+import secrets
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
 
@@ -35,3 +38,11 @@ def decode_access_token(token: str, expected_role: str) -> int | None:
         return int(payload["sub"])
     except (JWTError, KeyError, ValueError):
         return None
+
+def generate_api_key() -> str:
+    """A random key. The 'eok_' prefix makes it easy to recognize if it ever leaks."""
+    return "eok_" + secrets.token_urlsafe(32)
+
+
+def hash_api_key(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
