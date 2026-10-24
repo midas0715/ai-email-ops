@@ -24,6 +24,8 @@ class Organization(Base):
     agents: Mapped[list["SupportAgent"]] = relationship(back_populates="organization")
     emails: Mapped[list["Email"]] = relationship(back_populates="organization")
 
+    email: Mapped[str | None] = mapped_column(String(320), unique=True, nullable=True)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 class SupportAgent(Base):
     __tablename__ = "support_agent"
