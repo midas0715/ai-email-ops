@@ -8,9 +8,20 @@ from ai_email_ops.app.routes_org_admin import router as org_admin_router
 from ai_email_ops.app.routes_inbound import router as inbound_router
 from ai_email_ops.app.routes_knowledge import router as knowledge_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
+from ai_email_ops.app.config import settings
+
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(emails_router)
 app.include_router(tickets_router)
