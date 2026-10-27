@@ -4,8 +4,10 @@ import { CeoLayout } from "./components/CeoLayout";
 import { Layout } from "./components/Layout";
 import { AgentHome } from "./pages/AgentHome";
 import { AgentsPage } from "./pages/AgentsPage";
+import { ApiKeyPage } from "./pages/ApiKeyPage";
 import { CeoHome } from "./pages/CeoHome";
 import { DepartmentsPage } from "./pages/DepartmentsPage";
+import { DocumentsPage } from "./pages/DocumentsPage";
 import { Home } from "./pages/Home";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterOrg } from "./pages/RegisterOrg";
@@ -24,6 +26,8 @@ export default function App() {
             <Route index element={<CeoHome />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="departments" element={<DepartmentsPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="api-key" element={<ApiKeyPage />} />
           </Route>
         </Route>
         <Route element={<RequireRole role="agent" />}>

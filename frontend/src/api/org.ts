@@ -52,3 +52,39 @@ export function createDepartment(input: NewDepartment) {
 export function deleteDepartment(departmentId: number) {
   return request<void>(`/orgs/me/departments/${departmentId}`, { method: "DELETE" });
 }
+
+export interface ApiKeyCreated {
+  api_key: string;
+  hint: string;
+  note: string;
+}
+
+export interface KnowledgeDoc {
+  id: number;
+  filename: string;
+  size_bytes: number;
+  chunk_count: number;
+  created_at: string;
+}
+
+export function createApiKey() {
+  return request<ApiKeyCreated>("/orgs/me/api-key", { method: "POST" });
+}
+
+export function revokeApiKey() {
+  return request<void>("/orgs/me/api-key", { method: "DELETE" });
+}
+
+export function listDocuments() {
+  return request<KnowledgeDoc[]>("/orgs/me/knowledge");
+}
+
+export function uploadDocument(file: File) {
+  const formData = new FormData();
+  formData.append("file", file); // the API expects the field to be called "file"
+  return request<KnowledgeDoc>("/orgs/me/knowledge", { method: "POST", formData });
+}
+
+export function deleteDocument(documentId: number) {
+  return request<void>(`/orgs/me/knowledge/${documentId}`, { method: "DELETE" });
+}

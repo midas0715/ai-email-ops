@@ -4,6 +4,8 @@ const tabs = [
   { to: "/ceo", label: "Overview", end: true },
   { to: "/ceo/agents", label: "Agents", end: false },
   { to: "/ceo/departments", label: "Departments", end: false },
+  { to: "/ceo/documents", label: "Documents", end: false },
+  { to: "/ceo/api-key", label: "API key", end: false },
 ];
 
 export function CeoLayout() {
