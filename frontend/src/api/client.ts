@@ -23,6 +23,7 @@ interface RequestOptions {
   json?: unknown; // sent as JSON
   form?: Record<string, string>; // sent as a form (the login routes want this)
   auth?: boolean; // set to false for login and register
+  formData?: FormData; // sent as a file upload
 }
 
 // FastAPI sends {"detail": "text"} or, for invalid input, {"detail": [{"msg": ...}]}
@@ -52,6 +53,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     body = JSON.stringify(options.json);
   } else if (options.form) {
     body = new URLSearchParams(options.form); // the browser sets the content type itself
+  } else if (options.formData) {
+    body = options.formData; // the browser adds the multipart headers itself
   }
 
   const sendToken = options.auth !== false;
