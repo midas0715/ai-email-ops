@@ -1,5 +1,6 @@
 from ai_email_ops.app.models import Department
 from ai_email_ops.app.schemas import TicketDraft
+from ollama import ResponseError
 
 
 def ticket_status(client, headers, ticket_id):
@@ -129,3 +130,22 @@ def test_cached_draft_is_not_visible_to_another_agent(
     response = client.post(f"/emails/{email.id}/start-ticket", headers=login(ben))
 
     assert response.status_code == 403
+
+def test_ai_crash_gives_a_clean_503_that_the_browser_may_read(
+    client, login, monkeypatch, make_agent, make_email
+):
+    def crash(email):
+        raise ResponseError("llama-server process has terminated", 500)
+
+    monkeypatch.setattr("ai_email_ops.app.routes_emails.extract_ticket_draft", crash)
+    asha = make_agent("asha")
+    email = make_email(agent=asha)
+
+    response = client.post(
+        f"/emails/{email.id}/start-ticket",
+        headers={**login(asha), "Origin": "http://localhost:5173"},
+    )
+
+    assert response.status_code == 503
+    assert "AI service" in response.json()["detail"]
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
