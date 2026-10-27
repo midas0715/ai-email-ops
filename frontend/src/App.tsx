@@ -1,8 +1,11 @@
 import { Route, Routes } from "react-router";
 import { RequireRole } from "./auth/RequireRole";
+import { CeoLayout } from "./components/CeoLayout";
 import { Layout } from "./components/Layout";
 import { AgentHome } from "./pages/AgentHome";
+import { AgentsPage } from "./pages/AgentsPage";
 import { CeoHome } from "./pages/CeoHome";
+import { DepartmentsPage } from "./pages/DepartmentsPage";
 import { Home } from "./pages/Home";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterOrg } from "./pages/RegisterOrg";
@@ -17,7 +20,11 @@ export default function App() {
         <Route path="/agent/login" element={<LoginPage role="agent" />} />
 
         <Route element={<RequireRole role="org" />}>
-          <Route path="/ceo" element={<CeoHome />} />
+          <Route path="/ceo" element={<CeoLayout />}>
+            <Route index element={<CeoHome />} />
+            <Route path="agents" element={<AgentsPage />} />
+            <Route path="departments" element={<DepartmentsPage />} />
+          </Route>
         </Route>
         <Route element={<RequireRole role="agent" />}>
           <Route path="/agent" element={<AgentHome />} />
