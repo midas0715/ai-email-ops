@@ -16,7 +16,7 @@ redis_client = redis.Redis.from_url(
 )
 
 # Change this number whenever the prompt or schema changes, so old cached drafts are ignored
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v3"
 TICKET_DRAFT_TTL_SECONDS = 3600  # 1 hour
 
 

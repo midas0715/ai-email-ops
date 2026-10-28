@@ -13,6 +13,14 @@ interface TicketDraftFormProps {
   onRegenerate: () => void;
 }
 
+const CATEGORY_LABELS: Record<Category, string> = {
+  billing: "Billing / finance (payments, refunds, invoices)",
+  technical: "Technical (bugs, errors, login problems)",
+  account: "Account changes (profile, plan, close account)",
+  complaint: "Complaint",
+  general: "General question",
+};
+
 const inputClass =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
 const labelClass = "mb-1 block text-sm font-medium text-slate-700";
@@ -65,13 +73,13 @@ export function TicketDraftForm({
           </label>
           <select
             id="category"
-            className={`${inputClass} capitalize`}
+            className={inputClass}
             value={draft.category}
             onChange={(event) => setDraft({ ...draft, category: event.target.value as Category })}
           >
             {CATEGORIES.map((value) => (
               <option key={value} value={value}>
-                {value}
+                {CATEGORY_LABELS[value]}
               </option>
             ))}
           </select>
