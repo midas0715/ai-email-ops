@@ -18,6 +18,7 @@ from ai_email_ops.app.models import (
 )
 from ai_email_ops.app.security import hash_password
 from ai_email_ops.app.security import generate_api_key, hash_api_key, hash_password
+from ai_email_ops.app.schemas import Category
 
 router = APIRouter(prefix="/orgs/me", tags=["organization admin"])
 
@@ -45,13 +46,13 @@ class AgentRemovedOut(BaseModel):
 class DepartmentIn(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
-
+    categories: list[Category] = []
 
 class DepartmentOut(BaseModel):
     id: int
     name: str
     email: str
-
+    categories: list[str]
     model_config = {"from_attributes": True}
 
 class ApiKeyOut(BaseModel):
@@ -156,7 +157,10 @@ def create_department(
     org: Organization = Depends(get_current_org),
 ):
     department = Department(
-        organization_id=org.id, name=payload.name.strip(), email=payload.email.lower()
+        organization_id=org.id,
+        name=payload.name.strip(),
+        email=payload.email.lower(),
+        categories=sorted({c.value for c in payload.categories}),  # duplicates removed
     )
     db.add(department)
     try:
@@ -193,6 +197,23 @@ def delete_department(
         )
     db.delete(department)
     db.commit()
+
+class DepartmentCategoriesIn(BaseModel):
+    categories: list[Category]
+
+
+@router.put("/departments/{department_id}/categories", response_model=DepartmentOut)
+def set_department_categories(
+    department_id: int,
+    payload: DepartmentCategoriesIn,
+    db: Session = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    department = get_department_or_404(db, org, department_id)
+    department.categories = sorted({c.value for c in payload.categories})
+    db.commit()
+    db.refresh(department)
+    return department
 
 # ---------- API key for incoming emails ----------
 

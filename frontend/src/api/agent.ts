@@ -43,6 +43,75 @@ export interface TicketCreated {
   data: TicketDraft;
 }
 
+export interface TicketItem {
+  id: number;
+  email_id: number;
+  subject: string;
+  status: TicketStatus;
+  data: TicketDraft;
+  created_at: string;
+}
+
+export interface ReplyInfo {
+  to_email: string;
+  subject: string;
+  body: string;
+  sent_at: string;
+}
+
+export interface EscalationInfo {
+  department_id: number;
+  department: string;
+  to_email: string;
+  subject: string;
+  body: string;
+  sent_at: string;
+}
+
+export interface TicketDetail {
+  id: number;
+  status: TicketStatus;
+  data: TicketDraft;
+  created_at: string;
+  updated_at: string;
+  email: EmailDetail;
+  reply: ReplyInfo | null;
+  escalation: EscalationInfo | null;
+  suggested_department_id: number | null;
+}
+
+export interface DepartmentOption {
+  id: number;
+  name: string;
+  email: string;
+  categories: string[];
+}
+
+export interface ReplyDraftResult {
+  reply: string;
+  sources: string[];
+}
+
+export interface DepartmentDraftResult {
+  department: string;
+  to_email: string;
+  subject: string;
+  body: string;
+}
+
+export interface SendPayload {
+  reply_body: string;
+  department_id?: number;
+  department_body?: string;
+}
+
+export interface SendResult {
+  ticket_id: number;
+  status: TicketStatus;
+  reply_sent_to: string;
+  department_notified: string | null;
+}
+
 export function listMyEmails(options: { onlyNew: boolean; limit: number; offset: number }) {
   const params = new URLSearchParams({
     only_new: String(options.onlyNew),
@@ -64,4 +133,36 @@ export function startTicket(emailId: number, refresh: boolean) {
 
 export function saveTicket(emailId: number, draft: TicketDraft) {
   return request<TicketCreated>(`/emails/${emailId}/ticket`, { method: "POST", json: draft });
+}
+
+export function listMyTickets(options: { status?: TicketStatus; limit: number; offset: number }) {
+  const params = new URLSearchParams({
+    limit: String(options.limit),
+    offset: String(options.offset),
+  });
+  if (options.status) params.set("status", options.status);
+  return request<TicketItem[]>(`/me/tickets?${params.toString()}`);
+}
+
+export function getMyTicket(ticketId: number) {
+  return request<TicketDetail>(`/me/tickets/${ticketId}`);
+}
+
+export function listMyDepartments() {
+  return request<DepartmentOption[]>("/me/departments");
+}
+
+export function draftReply(emailId: number) {
+  return request<ReplyDraftResult>(`/emails/${emailId}/draft-reply`, { method: "POST" });
+}
+
+export function draftDepartmentNotice(ticketId: number, departmentId: number) {
+  return request<DepartmentDraftResult>(`/tickets/${ticketId}/escalation-draft`, {
+    method: "POST",
+    json: { department_id: departmentId },
+  });
+}
+
+export function sendTicketEmails(ticketId: number, payload: SendPayload) {
+  return request<SendResult>(`/tickets/${ticketId}/send`, { method: "POST", json: payload });
 }

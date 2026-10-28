@@ -1,4 +1,5 @@
 import { request } from "./client";
+import type { Category } from "./agent";
 
 export interface Agent {
   id: number;
@@ -22,11 +23,13 @@ export interface Department {
   id: number;
   name: string;
   email: string;
+  categories: Category[];
 }
 
 export interface NewDepartment {
   name: string;
   email: string;
+  categories: Category[];
 }
 
 export function listAgents() {
@@ -47,6 +50,13 @@ export function listDepartments() {
 
 export function createDepartment(input: NewDepartment) {
   return request<Department>("/orgs/me/departments", { method: "POST", json: input });
+}
+
+export function setDepartmentCategories(departmentId: number, categories: Category[]) {
+  return request<Department>(`/orgs/me/departments/${departmentId}/categories`, {
+    method: "PUT",
+    json: { categories },
+  });
 }
 
 export function deleteDepartment(departmentId: number) {
