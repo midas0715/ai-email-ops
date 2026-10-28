@@ -9,7 +9,7 @@ from ai_email_ops.app.db import get_db
 from ai_email_ops.app.deps import get_current_agent
 from ai_email_ops.app.models import Department, Email, SupportAgent, Ticket, TicketStatus
 from ai_email_ops.app.schemas import TicketDraft
-
+from ai_email_ops.app.routing import suggest_department
 router = APIRouter(prefix="/me", tags=["me"])
 
 
@@ -74,13 +74,13 @@ class TicketDetail(BaseModel):
     email: EmailDetail
     reply: ReplyInfo | None
     escalation: EscalationInfo | None
-
+    suggested_department_id: int | None
 
 class DepartmentItem(BaseModel):
     id: int
     name: str
     email: str
-
+    categories: list[str]
     model_config = {"from_attributes": True}
 
 
@@ -205,7 +205,7 @@ def my_ticket(
             body=e.body,
             sent_at=e.sent_at,
         )
-
+    suggested = suggest_department(db, agent.organization_id, ticket.data["category"])
     return TicketDetail(
         id=ticket.id,
         status=ticket.status,
@@ -215,6 +215,7 @@ def my_ticket(
         email=email_detail(ticket.email),
         reply=ReplyInfo.model_validate(ticket.reply) if ticket.reply else None,
         escalation=escalation,
+        suggested_department_id=suggested.id if suggested else None,
     )
 
 

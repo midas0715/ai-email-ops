@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func, UniqueConstraint,text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -100,7 +100,9 @@ class Department(Base):
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"))
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(320))
-
+    categories: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
 
 class Escalation(Base):
     __tablename__ = "escalation"

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -71,6 +71,25 @@ class TicketStatusOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SendIn(BaseModel):
+    reply_body: str = Field(min_length=1, max_length=20000)
+    department_id: int | None = None
+    department_body: str | None = Field(default=None, min_length=1, max_length=20000)
+
+    @model_validator(mode="after")
+    def department_fields_go_together(self):
+        if (self.department_id is None) != (self.department_body is None):
+            raise ValueError("department_id and department_body must be given together")
+        return self
+
+
+class SendOut(BaseModel):
+    ticket_id: int
+    status: TicketStatus
+    reply_sent_to: str
+    department_notified: str | None
+
+
 def get_ticket_or_404(db: Session, ticket_id: int, agent: SupportAgent) -> Ticket:
     ticket = db.get(Ticket, ticket_id)
     if ticket is None:
@@ -92,7 +111,59 @@ def escalation_subject(ticket: Ticket) -> str:
     return f"[Ticket #{ticket.id}] {ticket.email.subject}"
 
 
-@router.post("/{ticket_id}/reply", response_model=ReplyOut, status_code=201)
+@router.post("/{ticket_id}/send", response_model=SendOut, status_code=201)
+def send_ticket_emails(
+    ticket_id: int,
+    payload: SendIn,
+    db: Session = Depends(get_db),
+    agent: SupportAgent = Depends(get_current_agent),
+):
+    """Send the reply to the customer and, if chosen, a notice to a department. Then we are done."""
+    ticket = get_ticket_or_404(db, ticket_id, agent)
+    department = None
+    if payload.department_id is not None:
+        department = get_department_or_404(db, ticket, payload.department_id)
+    if ticket.reply is not None or ticket.status == TicketStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="The emails for this ticket were already sent")
+
+    reply = Reply(
+        ticket_id=ticket.id,
+        to_email=ticket.email.sender_email,
+        subject=f"Re: {ticket.email.subject}",
+        body=payload.reply_body,
+    )
+    db.add(reply)
+
+    notice = None
+    if department is not None and payload.department_body is not None:
+        notice = Escalation(
+            ticket_id=ticket.id,
+            department_id=department.id,
+            to_email=department.email,
+            subject=escalation_subject(ticket),
+            body=payload.department_body,
+        )
+        db.add(notice)
+
+    ticket.status = TicketStatus.COMPLETED
+    try:
+        db.commit()  # both records and the new status are saved together, or not at all
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The emails for this ticket were already sent")
+
+    send_email(reply.to_email, reply.subject, reply.body)
+    if notice is not None:
+        send_email(notice.to_email, notice.subject, notice.body)
+    return SendOut(
+        ticket_id=ticket.id,
+        status=ticket.status,
+        reply_sent_to=reply.to_email,
+        department_notified=department.name if department else None,
+    )
+
+
+@router.post("/{ticket_id}/reply", response_model=ReplyOut, status_code=201, deprecated=True)
 def send_reply(
     ticket_id: int,
     payload: ReplyIn,
@@ -142,7 +213,9 @@ def create_escalation_draft(
     )
 
 
-@router.post("/{ticket_id}/escalate", response_model=EscalationOut, status_code=201)
+@router.post(
+    "/{ticket_id}/escalate", response_model=EscalationOut, status_code=201, deprecated=True
+)
 def escalate(
     ticket_id: int,
     payload: EscalationIn,
@@ -174,7 +247,7 @@ def escalate(
     return escalation
 
 
-@router.post("/{ticket_id}/complete", response_model=TicketStatusOut)
+@router.post("/{ticket_id}/complete", response_model=TicketStatusOut, deprecated=True)
 def complete_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
