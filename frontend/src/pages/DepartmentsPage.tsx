@@ -1,22 +1,64 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createDepartment, deleteDepartment, listDepartments } from "../api/org";
+import { CATEGORIES } from "../api/agent";
+import type { Category } from "../api/agent";
+import {
+  createDepartment,
+  deleteDepartment,
+  listDepartments,
+  setDepartmentCategories,
+} from "../api/org";
 import { ErrorText } from "../components/ErrorText";
 import { Field } from "../components/Field";
 import { card, dangerButton, primaryButton } from "../components/styles";
+import { CATEGORY_NAMES } from "../utils/categories";
 
 const DEPARTMENTS_KEY = ["org", "departments"];
+
+function CategoryChecks({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Category[];
+  onChange: (next: Category[]) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      {CATEGORIES.map((category) => (
+        <label key={category} className="flex items-center gap-1.5 text-sm">
+          <input
+            type="checkbox"
+            disabled={disabled}
+            checked={value.includes(category)}
+            onChange={(event) =>
+              onChange(
+                event.target.checked
+                  ? [...value, category]
+                  : value.filter((item) => item !== category),
+              )
+            }
+          />
+          {CATEGORY_NAMES[category]}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 function AddDepartmentForm() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const mutation = useMutation({
-    mutationFn: () => createDepartment({ name, email }),
+    mutationFn: () => createDepartment({ name, email, categories }),
     onSuccess: async () => {
       setName("");
       setEmail("");
+      setCategories([]);
       await queryClient.invalidateQueries({ queryKey: DEPARTMENTS_KEY });
     },
   });
@@ -50,6 +92,10 @@ function AddDepartmentForm() {
           onChange={(event) => setEmail(event.target.value)}
         />
       </div>
+      <div>
+        <p className="mb-1 text-sm font-medium text-slate-700">Handles these categories</p>
+        <CategoryChecks value={categories} onChange={setCategories} />
+      </div>
       <ErrorText error={mutation.error} />
       <button type="submit" disabled={mutation.isPending} className={primaryButton}>
         {mutation.isPending ? "Adding..." : "Add department"}
@@ -67,12 +113,20 @@ export function DepartmentsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: DEPARTMENTS_KEY }),
   });
 
+  const changeCategories = useMutation({
+    mutationFn: (input: { id: number; categories: Category[] }) =>
+      setDepartmentCategories(input.id, input.categories),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: DEPARTMENTS_KEY }),
+  });
+
   return (
     <div className="space-y-8">
       <section>
         <h1 className="text-2xl font-semibold">Departments</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Agents can escalate a ticket to one of these departments, for example Accounting or HR.
+          Tick the categories each department handles. When an agent finishes a ticket, the
+          department that matches its category is suggested for the notice email. For example:
+          Accounting handles Billing, and Tech handles Technical.
         </p>
       </section>
 
@@ -91,6 +145,7 @@ export function DepartmentsPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Handles (saved when you tick)</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -99,6 +154,15 @@ export function DepartmentsPage() {
                   <tr key={department.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3">{department.name}</td>
                     <td className="px-4 py-3 text-slate-600">{department.email}</td>
+                    <td className="px-4 py-3">
+                      <CategoryChecks
+                        value={department.categories}
+                        disabled={changeCategories.isPending}
+                        onChange={(next) =>
+                          changeCategories.mutate({ id: department.id, categories: next })
+                        }
+                      />
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         className={dangerButton}
@@ -118,6 +182,7 @@ export function DepartmentsPage() {
             </table>
           </div>
         )}
+        <ErrorText error={changeCategories.error} />
         <ErrorText error={remove.error} />
       </section>
     </div>

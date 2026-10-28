@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { getMyEmail, saveTicket, startTicket } from "../api/agent";
 import type { TicketDraft } from "../api/agent";
 import { ErrorText } from "../components/ErrorText";
@@ -10,6 +10,7 @@ import { formatDate } from "../utils/format";
 
 function EmailView({ emailId }: { emailId: number }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [draft, setDraft] = useState<TicketDraft | null>(null);
   const [draftVersion, setDraftVersion] = useState(0);
 
@@ -28,10 +29,11 @@ function EmailView({ emailId }: { emailId: number }) {
 
   const save = useMutation({
     mutationFn: (ticket: TicketDraft) => saveTicket(emailId, ticket),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       setDraft(null);
-      // Refreshes the inbox lists and this email, so the status badge and panel update
+      // Refreshes the inbox lists and this email, so the status badge updates
       await queryClient.invalidateQueries({ queryKey: ["agent", "emails"] });
+      navigate(`/agent/tickets/${created.id}`);
     },
   });
 
@@ -59,8 +61,13 @@ function EmailView({ emailId }: { emailId: number }) {
 
           {email.data.ticket_id !== null ? (
             <section className="rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-800">
-              Ticket #{email.data.ticket_id} has been created for this email. Replying and
-              escalating come in the next step.
+              A ticket already exists for this email.{" "}
+              <Link
+                to={`/agent/tickets/${email.data.ticket_id}`}
+                className="font-medium underline"
+              >
+                Open ticket #{email.data.ticket_id}
+              </Link>
             </section>
           ) : draft ? (
             <TicketDraftForm
