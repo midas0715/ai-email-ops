@@ -59,5 +59,16 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   pgdata:
