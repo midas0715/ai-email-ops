@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push cancels the older run of the same branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Settings the app needs. Real secrets are never put here.
+env:
+  DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/emailops
+  REDIS_URL: redis://localhost:6379/0
+  OLLAMA_BASE_URL: http://localhost:11434
+  LLM_MODEL: qwen2.5:7b
+  EMBED_MODEL: nomic-embed-text
+  SECRET_KEY: ci-only-secret-key
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: emailops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install the dependencies exactly as locked
+        run: uv sync --locked
+      - name: Create the test database
+        run: |
+          uv run python -c "import psycopg; psycopg.connect('postgresql://postgres:postgres@localhost:5432/emailops', autocommit=True).execute('CREATE DATABASE emailops_test')"
+      - name: Run the tests
+        run: uv run pytest -q
+
+  migrations:
+    name: Migrations build a fresh database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: emailops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install the dependencies exactly as locked
+        run: uv sync --locked
+      - name: There is exactly one migration head
+        run: |
+          heads=$(uv run alembic heads 2>/dev/null | grep -c "(head)")
+          echo "Heads found: $heads"
+          test "$heads" -eq 1
+      - name: Build an empty database from the migrations
+        run: uv run alembic upgrade head
+      - name: The models and the migrations agree
+        run: uv run alembic check
+      - name: Downgrade to nothing and upgrade again
+        run: |
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+  frontend:
+    name: Frontend lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install the packages exactly as locked
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Docker stack smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create the settings file
+        run: cp .env.example .env
+      - name: Build and start the whole stack
+        run: docker compose up -d --build
+      - name: Check that the app answers through nginx
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:8080/api/health; then
+              echo
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
+      - name: Show what the containers say if something failed
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail 100
