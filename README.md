@@ -1,3 +1,4 @@
+![CI](https://github.com/midas0715/ai-email-ops/actions/workflows/ci.yml/badge.svg)
 # AI Email Operations
 
 An AI-assisted customer support system for organizations. Incoming emails are assigned to a support agent. A local LLM turns each email into a structured ticket and drafts a reply from the organization's own documents. **A human agent reviews everything before it is saved or sent.**
